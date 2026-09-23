@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# 环境变量（含密钥，绝不入库）
+.env
+
+# 运行时产物
+uploads/*
+!uploads/.gitkeep
+# 会话存档属于运行时数据，不入库（目录保留）
+data/sessions/*.json
+!data/sessions/.gitkeep
+samples/_verify_report.md
+
+# 编辑器
+.idea/
+.vscode/
+.DS_Store
+
+# 日志
+*.log

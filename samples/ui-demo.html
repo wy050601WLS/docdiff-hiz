@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>文件比对专家 · 离线交互 Demo</title>
+<style>
+:root{--primary:#2b6aff;--primary-hover:#1b5af0;--bg:#f5f7fa;--sidebar-bg:#001529;--card-bg:#fff;--text:#1f2329;--text-secondary:#5c6b7a;--border:#e1e4e8;--success:#00b578;--warning:#faad14;--danger:#ff4d4f}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--sidebar-bg);color:#fff;flex-shrink:0;padding:20px 0}
+.logo{font-size:18px;font-weight:600;padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1)}
+nav{margin-top:12px}
+.nav-item{display:block;padding:12px 24px;color:rgba(255,255,255,.75);text-decoration:none;font-size:14px;cursor:pointer}
+.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,.08)}
+.nav-item.dim{cursor:default;opacity:.45}
+.nav-item.dim:hover{background:none;color:rgba(255,255,255,.75)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.breadcrumb{color:var(--text-secondary);font-size:14px}
+.breadcrumb span{margin-right:6px}
+.topbar-tag{font-size:12px;color:#874d00;background:#fffbe6;border:1px solid #ffe58f;border-radius:12px;padding:4px 12px}
+.workspace{flex:1;overflow-y:auto;padding:24px}
+.card{background:var(--card-bg);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:32px;max-width:980px;margin:0 auto 20px}
+.card-title{font-size:22px;margin:0 0 8px;text-align:center}
+.card-desc{color:var(--text-secondary);text-align:center;max-width:760px;margin:0 auto 28px;font-size:14px;line-height:1.6}
+.scenario-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:22px;border-bottom:1px dashed var(--border)}
+.scenario-label{font-size:13px;color:var(--text-secondary);margin-right:2px}
+.scenario-btn{font-size:13px;padding:7px 14px}
+.scenario-btn.on{border-color:var(--primary);color:var(--primary);background:rgba(43,106,255,.06)}
+.upload-row{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px}
+.upload-box{width:260px;height:200px;border:2px dashed var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:border-color .2s,background .2s}
+.upload-box:hover,.upload-box.dragover{border-color:var(--primary);background:rgba(43,106,255,.03)}
+.upload-box.has-file{border-color:var(--success);background:rgba(0,181,120,.04)}
+.upload-icon{font-size:48px;margin-bottom:12px}
+.upload-title{font-weight:600;margin-bottom:6px}
+.upload-hint{font-size:13px;color:var(--text-secondary)}
+.file-name{margin-top:10px;font-size:13px;color:var(--success);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upload-vs{font-size:28px;color:var(--text-secondary)}
+.file-note{text-align:center;color:var(--text-secondary);font-size:12.5px;min-height:18px;margin-bottom:14px}
+.primary-btn{display:block;margin:0 auto;padding:12px 32px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer}
+.primary-btn:hover:not(:disabled){background:var(--primary-hover)}
+.primary-btn:disabled{background:#b7c4e0;cursor:not-allowed}
+.secondary-btn{padding:9px 18px;background:#fff;color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:14px;cursor:pointer}
+.secondary-btn:hover{border-color:var(--primary);color:var(--primary)}
+.error-msg{color:var(--danger);text-align:center;margin-top:16px;font-size:14px}
+.hidden{display:none !important}
+.result-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.status-badge{display:inline-block;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600}
+.status-badge.success{background:rgba(0,181,120,.12);color:var(--success)}
+.status-badge.error{background:rgba(255,77,79,.1);color:var(--danger)}
+.meta{margin-top:8px;color:var(--text-secondary);font-size:13px}
+.stats{display:flex;gap:10px}
+.stat-badge{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500}
+.stat-badge.similar{background:#e6f7f0;color:var(--success)}
+.stat-badge.modified{background:#fff7e6;color:var(--warning)}
+.stat-badge.added{background:#e6f4ff;color:var(--primary)}
+.stat-badge.deleted{background:#fff1f0;color:var(--danger)}
+.action-bar{display:flex;gap:12px;justify-content:center;margin-bottom:24px;flex-wrap:wrap}
+.action-bar .primary-btn{margin:0}
+.summary-box{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.7;margin-bottom:24px}
+.chat-section{border-top:1px solid var(--border);padding-top:20px}
+.chat-title{font-weight:600;margin-bottom:12px}
+.chat-hints{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.chat-hint{padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.chat-hint:hover{border-color:var(--primary);color:var(--primary)}
+.chat-history{max-height:300px;overflow-y:auto;background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:12px}
+.chat-bubble{margin-bottom:10px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.6;max-width:88%;white-space:pre-wrap}
+.chat-bubble.user{background:var(--primary);color:#fff;margin-left:auto;border-bottom-right-radius:2px}
+.chat-bubble.assistant{background:#fff;border:1px solid var(--border);border-bottom-left-radius:2px}
+.chat-bubble.pending{color:var(--text-secondary)}
+.bubble-ts{display:block;margin-top:4px;font-size:11px;opacity:.65}
+.chat-input-row{display:flex;gap:10px}
+.chat-input-row input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px}
+.chat-input-row button{margin:0;padding:10px 22px}
+.report-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.report-title{font-size:18px;font-weight:600}
+.report-body{line-height:1.8;font-size:14px}
+.report-body h1{font-size:22px;border-bottom:2px solid var(--border);padding-bottom:10px}
+.report-body h2{font-size:18px;margin-top:28px}
+.report-body h3{font-size:15px;margin-top:18px}
+.report-body ul{padding-left:20px}
+.report-body .diff-del{background:#ffe6e6;text-decoration:line-through}
+.report-body .diff-ins{background:#e6ffe6;text-decoration:underline}
+.history-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.history-title{font-size:20px;margin:0 0 6px}
+.history-sub{color:var(--text-secondary);font-size:13px}
+.history-search{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:16px}
+.history-search:focus{outline:none;border-color:var(--primary)}
+.history-list{display:flex;flex-direction:column;gap:12px}
+.history-item{border:1px solid var(--border);border-radius:10px;padding:14px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.history-item:hover{border-color:var(--primary);box-shadow:0 2px 10px rgba(43,106,255,.08)}
+.history-item-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.history-item-title{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item-time{color:var(--text-secondary);font-size:12px;flex-shrink:0}
+.history-item-summary{color:var(--text-secondary);font-size:13px;margin-top:6px;line-height:1.6}
+.history-item-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;flex-wrap:wrap}
+.history-item-badges{display:flex;gap:8px;flex-wrap:wrap}
+.history-item-badges .stat-badge{font-size:12px;padding:4px 10px}
+.history-item-actions{display:flex;gap:8px}
+.history-empty{text-align:center;color:var(--text-secondary);padding:40px 0;font-size:14px}
+.link-danger{background:none;border:none;color:var(--danger);font-size:13px;cursor:pointer;padding:0}
+.link-danger:hover{text-decoration:underline}
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.spinner{width:44px;height:44px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:14px;color:var(--text-secondary)}
+.demo-banner{max-width:980px;margin:0 auto 20px;padding:12px 18px;border-radius:8px;background:#fffbe6;border:1px solid #ffe58f;color:#874d00;font-size:13px;line-height:1.7}
+.trace{max-width:980px;margin:0 auto 20px;background:#0b1020;color:#c9d4e8;border-radius:10px;padding:16px 20px;font-family:Consolas,Monaco,monospace;font-size:12.5px;line-height:1.75;display:none;white-space:pre-wrap}
+.trace-title{color:#7ee0b8;font-weight:600;margin-bottom:8px}
+.trace .ok{color:#7ee0b8}
+.trace .dim{color:#7c8aa5}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">文档比对平台</div>
+    <nav>
+      <a class="nav-item active" id="nav-expert" href="#">可用专家</a>
+      <a class="nav-item dim" href="#">核心专家库</a>
+      <a class="nav-item dim" href="#">专家管理</a>
+      <a class="nav-item" id="nav-history" href="#">审核历史</a>
+      <a class="nav-item dim" href="#">审核知识库</a>
+      <a class="nav-item dim" href="#">技能专家库</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb"><span>对话</span><span>/</span><span>文件比对专家</span></div>
+      <div class="topbar-tag" id="store-tag">离线 Demo · 无需后端</div>
+    </header>
+
+    <section class="workspace">
+      <div class="demo-banner">
+        <strong>离线交互 Demo</strong>　双击即可打开，不需要后端、不需要联网。差异由浏览器内 JS 引擎实时算出（与后端 <code>diff_engine.py</code> 同一套算法：LCS 相似度 + 滑动窗口配对 + 字符级 diff），会话记录存在浏览器本地。
+        正式版走 FastAPI，前端即仓库里的 <code>src/docdiff/static/</code>。
+      </div>
+
+      <!-- 上传区 -->
+      <div id="upload-view" class="card">
+        <h1 class="card-title">文件比对专家</h1>
+        <p class="card-desc">面向合同、规范、制度、技术文件、标书及各类版本化文档，自动完成两份文档的逐章节、逐段落、逐字段内容比对，识别新增、删除、修改等差异点。</p>
+
+        <div class="scenario-row">
+          <span class="scenario-label">演示场景</span>
+          <button class="secondary-btn scenario-btn on" data-scenario="spec">技术规格说明书 Rev01 → Rev03</button>
+          <button class="secondary-btn scenario-btn" data-scenario="contract">采购合同 v1 → v2</button>
+        </div>
+
+        <div class="upload-row">
+          <div class="upload-box" id="drop-old">
+            <input type="file" id="old-pdf" accept="application/pdf" hidden />
+            <div class="upload-icon">📄</div>
+            <div class="upload-title">上传文档 A（旧版）</div>
+            <div class="upload-hint">点击或拖拽 PDF 文件</div>
+            <div class="file-name" id="old-name"></div>
+          </div>
+          <div class="upload-vs">⇄</div>
+          <div class="upload-box" id="drop-new">
+            <input type="file" id="new-pdf" accept="application/pdf" hidden />
+            <div class="upload-icon">📗</div>
+            <div class="upload-title">上传文档 B（新版）</div>
+            <div class="upload-hint">点击或拖拽 PDF 文件</div>
+            <div class="file-name" id="new-name"></div>
+          </div>
+        </div>
+
+        <div class="file-note" id="file-note"></div>
+
+        <button id="compare-btn" class="primary-btn">开始对比两个版本差异</button>
+        <div style="text-align:center;margin-top:14px">
+          <button id="demo-btn" class="secondary-btn">没文件？一键载入示例文档</button>
+        </div>
+        <div id="error-msg" class="error-msg"></div>
+      </div>
+
+      <pre id="trace" class="trace"></pre>
+
+      <!-- 结果概览 -->
+      <div id="result-view" class="card hidden">
+        <div class="result-header">
+          <div>
+            <div class="status-badge success" id="status-badge">✓ 比对完成</div>
+            <div class="meta" id="compare-meta"></div>
+          </div>
+          <div class="stats" id="stats-badges"></div>
+        </div>
+
+        <div class="action-bar">
+          <button id="view-report-btn" class="primary-btn">查看详细报告</button>
+          <button id="copy-btn" class="secondary-btn">复制结论</button>
+          <button id="download-md-btn" class="secondary-btn">下载报告</button>
+          <button id="restart-btn" class="secondary-btn">重新比对</button>
+        </div>
+
+        <div id="summary-box" class="summary-box"></div>
+
+        <div class="chat-section">
+          <div class="chat-title">💬 差异问答</div>
+          <div class="chat-hints" id="chat-hints"></div>
+          <div id="chat-history" class="chat-history"></div>
+          <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="向专家提问，例如：这两份文档有什么差别？" />
+            <button id="chat-send" class="primary-btn">发送</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 报告详情 -->
+      <div id="report-view" class="card hidden">
+        <div class="report-toolbar">
+          <button id="back-btn" class="secondary-btn">← 返回</button>
+          <div class="report-title">版本差异对比报告</div>
+          <div></div>
+        </div>
+        <div id="report-body" class="report-body"></div>
+      </div>
+
+      <!-- 审核历史 -->
+      <div id="history-view" class="card hidden">
+        <div class="history-header">
+          <div>
+            <h2 class="history-title">审核历史</h2>
+            <div class="history-sub" id="history-sub">每次比对自动存档，消息带时间戳，刷新页面或关掉浏览器都不丢</div>
+          </div>
+          <button id="history-refresh-btn" class="secondary-btn">刷新</button>
+        </div>
+        <input id="history-search" class="history-search" type="text" placeholder="搜索会话：标题、结论或对话内容…" />
+        <div id="history-list" class="history-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="loading" class="loading hidden">
+  <div class="spinner"></div>
+  <div class="loading-text">正在解析与比对文档，请稍候…</div>
+</div>
+
+<script>
+/* =========================================================================
+   ENGINE_START — 纯函数比对引擎（与 src/docdiff/services/diff_engine.py 同算法）
+   不依赖 DOM，可被 node 直接加载做离线校验
+   ========================================================================= */
+const PUNCT_RE = /[\s，。、；：""''（）《》【】「」〔〕,.!?;:()\[\]"'`~!@#$%^&*+=|\\\/<>\-—–_…·]/g;
+
+/** 归一化：去空白与标点，转小写（中文场景下大小写影响很小，但保留对英文缩写的鲁棒性） */
+function normalizeText(s) {
+  return (s || "").replace(PUNCT_RE, "").toLowerCase();
+}
+
+/** LCS 长度，滚动数组省内存 */
+function lcsLength(a, b) {
+  const m = a.length, n = b.length;
+  if (!m || !n) return 0;
+  let prev = new Array(n + 1).fill(0);
+  let cur = new Array(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]);
+    }
+    const tmp = prev; prev = cur; cur = tmp; cur.fill(0);
+  }
+  return prev[n];
+}
+
+/** 归一化后的相似度：2*LCS/(len_a+len_b)，取值 0~1 */
+function similarity(a, b) {
+  const x = normalizeText(a), y = normalizeText(b);
+  if (!x && !y) return 1;
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  return (2 * lcsLength(x, y)) / (x.length + y.length);
+}
+
+/** 字符级 diff：返回 [{type:'equal'|'del'|'ins', text}]，del=旧版独有，ins=新版独有 */
+function charDiff(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const ops = [];
+  const push = (t, ch) => {
+    const last = ops[ops.length - 1];
+    if (last && last.type === t) last.text += ch;
+    else ops.push({ type: t, text: ch });
+  };
+  let i = 0, j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) { push("equal", a[i]); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { push("del", a[i]); i++; }
+    else { push("ins", b[j]); j++; }
+  }
+  while (i < m) push("del", a[i++]);
+  while (j < n) push("ins", b[j++]);
+  return ops;
+}
+
+/**
+ * 段落配对：滑动窗口 + 相似度阈值。
+ * 用窗口而非全局最优是为了抗「大段插入/删除」——一旦新文档中间插了一大段，
+ * 全局匹配会把后半段全部错位配成「修改」，窗口法能把错位限制在局部。
+ */
+function pairParagraphs(oldP, newP, threshold, window) {
+  const matchedOld = new Set(), matchedNew = new Set(), pairs = [];
+  for (let i = 0; i < oldP.length; i++) {
+    if (matchedOld.has(i)) continue;
+    const start = Math.max(0, i - window);
+    const end = Math.min(newP.length, i + window + 1);
+    let bestJ = null, bestScore = -1;
+    for (let j = start; j < end; j++) {
+      if (matchedNew.has(j)) continue;
+      const score = similarity(oldP[i], newP[j]);
+      if (score > bestScore) { bestScore = score; bestJ = j; }
+    }
+    if (bestJ !== null && bestScore >= threshold) {
+      matchedOld.add(i); matchedNew.add(bestJ);
+      pairs.push({ i, j: bestJ, score: bestScore });
+    }
+  }
+  return { pairs, matchedOld, matchedNew };
+}
+
+/** 完整比对：输出 items（带 seq 序号）、stats、结论、风险等级 */
+function computeDiff(oldParas, newParas, opts) {
+  const o = Object.assign({ threshold: 0.6, window: 5 }, opts || {});
+  const { pairs, matchedOld, matchedNew } = pairParagraphs(oldParas, newParas, o.threshold, o.window);
+
+  const items = [];
+  pairs.forEach((p) => {
+    const same = normalizeText(oldParas[p.i]) === normalizeText(newParas[p.j]);
+    items.push({
+      status: same ? "similar" : "modified",
+      oldIdx: p.i, newIdx: p.j, score: p.score,
+      oldText: oldParas[p.i], newText: newParas[p.j],
+    });
+  });
+  oldParas.forEach((t, i) => {
+    if (!matchedOld.has(i)) items.push({ status: "deleted", oldIdx: i, newIdx: null, score: 0, oldText: t, newText: null });
+  });
+  newParas.forEach((t, j) => {
+    if (!matchedNew.has(j)) items.push({ status: "added", oldIdx: null, newIdx: j, score: 0, oldText: null, newText: t });
+  });
+
+  // 按原文位置排序，再统一编号——保证报告里的 [n] 与阅读顺序一致
+  items.sort((x, y) => {
+    const kx = x.oldIdx === null ? x.newIdx : x.oldIdx;
+    const ky = y.oldIdx === null ? y.newIdx : y.oldIdx;
+    return kx - ky;
+  });
+  items.forEach((it, k) => { it.seq = k + 1; });
+
+  const stats = { similar: 0, modified: 0, added: 0, deleted: 0, total: items.length };
+  items.forEach((it) => { stats[it.status]++; });
+
+  let comparable = true, riskLevel = "低", summary = "";
+  if (stats.similar === 0 && oldParas.length > 2 && newParas.length > 2) {
+    comparable = false;
+    riskLevel = "高";
+    summary = "两份文档主题或结构差异极大，无法判定为同一文档的不同版本，建议上传同源文档的旧版与新版。";
+  } else if (stats.total === 0) {
+    comparable = false;
+    riskLevel = "高";
+    summary = "两份文档均无可识别文本内容，无法比对。";
+  } else {
+    if (stats.added + stats.deleted > stats.modified + stats.similar) riskLevel = "高";
+    else if (stats.modified > stats.similar) riskLevel = "中";
+    summary =
+      `共比对 ${stats.total} 组段落：相似 ${stats.similar} 处、修改 ${stats.modified} 处、` +
+      `新增 ${stats.added} 处、删除 ${stats.deleted} 处，整体匹配率约 ` +
+      `${Math.round((stats.similar / stats.total) * 100)}%，风险等级 ${riskLevel}。`;
+  }
+
+  return { comparable, riskLevel, summary, stats, items };
+}
+
+/** 风险关键词规则：命中即列入待复核风险点 */
+const RISK_RULES = [
+  { name: "金额字段", re: /(金额|金额为|价款|价格|费用|元|万元|付款|支付)/, tip: "涉及金额字段，需核对是否与审批口径一致" },
+  { name: "工期节点", re: /(工期|期限|交付|时间|日期|月|自.*起算|排期)/, tip: "工期/期限变更，需评估是否影响里程碑承诺" },
+  { name: "技术指标", re: /(QPS|毫秒|并发|性能|响应|核|内存|GB|配置)/, tip: "技术指标变更，需确认是否可达成" },
+  { name: "数量规格", re: /(数量|台|套|台数|设备|型号)/, tip: "数量/规格变更，需确认采购与预算是否同步" },
+  { name: "责任条款", re: /(保密|违约|责任|赔偿|验收|罚则)/, tip: "合同条款变更，需法务确认是否为误删或非预期改动" },
+  { name: "版本信息", re: /(Rev|版本|发布日期)/, tip: "版本标识变更，需确认文件归档版本正确" },
+];
+
+/**
+ * 每个差异项只取第一条命中的规则（按 RISK_RULES 优先级）。
+ * 不这么做的话，一句「合同金额为 150 万元，按五期分期支付」会同时命中
+ * 金额、工期、条款三条规则，风险点数量虚高，反而稀释了真正需要注意的项。
+ */
+function collectRiskPoints(items) {
+  const points = [];
+  items.forEach((it) => {
+    if (it.status === "similar") return;
+    const text = (it.oldText || "") + " " + (it.newText || "");
+    const hit = RISK_RULES.find((r) => r.re.test(text));
+    if (hit) points.push({ seq: it.seq, rule: hit.name, tip: hit.tip });
+  });
+  return points;
+}
+/* ============================ ENGINE_END ============================ */
+
+/* ============================ 示例文档（两套场景） ============================ */
+const SCENARIOS = {
+  spec: {
+    label: "技术规格说明书",
+    fileA: "技术规格说明书_Rev01.pdf",
+    fileB: "技术规格说明书_Rev03.pdf",
+    old: [
+      "301 项目运行环境技术规格说明书（Rev 01）",
+      "第一条 项目概述",
+      "本文件为 301 项目运行环境的技术规格说明，用于明确硬件配置、操作系统、数据库及软件依赖等技术参数。",
+      "本版本为 Rev 01，发布日期为 2026 年 3 月 1 日。",
+      "第二条 硬件配置要求",
+      "应用服务器数量：1 台。",
+      "应用服务器配置：CPU 8 核，内存 32GB，系统盘 500GB SSD，数据盘 2TB。",
+      "数据库服务器配置：CPU 16 核，内存 64GB，数据盘 4TB SSD。",
+      "第三条 软件与操作系统",
+      "操作系统：Ubuntu 22.04.5 LTS。",
+      "数据库：MySQL 8.0.35。",
+      "运行时：Python 3.10，Docker 24.0。",
+      "第四条 性能指标",
+      "系统在标准负载下单接口响应时间不超过 800 毫秒。",
+      "并发能力要求：不低于 200 QPS。",
+      "第五条 项目工期与交付",
+      "项目总工期为 12 个月，自合同生效日起算。",
+      "合同金额为 100 万元，按四期分期支付。",
+      "保密期限为五年，自项目验收之日起算。",
+    ],
+    new: [
+      "301 项目运行环境技术规格说明书（Rev 03）",
+      "第一条 项目概述",
+      "本文件为 301 项目运行环境的技术规格说明，用于明确硬件配置、操作系统、数据库及软件依赖等技术参数。",
+      "本版本为 Rev 03，发布日期为 2026 年 9 月 15 日。",
+      "第二条 硬件配置要求",
+      "应用服务器数量：2 台。",
+      "应用服务器配置：CPU 16 核，内存 64GB，系统盘 500GB SSD，数据盘 2TB。",
+      "数据库服务器配置：CPU 16 核，内存 64GB，数据盘 4TB SSD。",
+      "新增：配置负载均衡设备 1 台，型号 F5-BIG-LTM。",
+      "第三条 软件与操作系统",
+      "操作系统：Ubuntu 24.04.1 LTS。",
+      "数据库：MySQL 8.4.2。",
+      "运行时：Python 3.12，Docker 27.1。",
+      "第四条 性能指标",
+      "系统在标准负载下单接口响应时间不超过 500 毫秒。",
+      "并发能力要求：不低于 500 QPS。",
+      "第五条 项目工期与交付",
+      "项目总工期为 18 个月，自合同生效日起算。",
+      "合同金额为 150 万元，按五期分期支付。",
+      "新增：验收标准需通过第三方性能检测机构出具报告。",
+      "新增：违约责任按合同总金额的 5% 计算。",
+    ],
+  },
+  contract: {
+    label: "采购合同",
+    fileA: "采购合同_HT-2026-0311_v1.pdf",
+    fileB: "采购合同_HT-2026-0311_v2.pdf",
+    old: [
+      "采购合同（合同编号 HT-2026-0311）",
+      "第一条 合同标的",
+      "甲方向乙方采购 301 项目运行环境配套设备，含应用服务器、数据库服务器各一批。",
+      "第二条 合同金额与支付",
+      "合同总金额为人民币 100 万元（含税）。",
+      "付款方式：合同签订后支付 30%，验收合格后支付 60%，质保期满支付 10%。",
+      "第三条 交付与工期",
+      "乙方应于合同生效之日起 60 日内完成全部设备交付。",
+      "交付地点：北京市海淀区甲方指定机房。",
+      "乙方应提供不少于 3 人的现场实施团队。",
+      "第四条 质量保证与验收",
+      "设备质保期为验收合格之日起 12 个月。",
+      "验收标准按附件一技术规格说明书执行。",
+      "第五条 保密与违约",
+      "双方对合同内容及履约过程中知悉的商业秘密负有保密义务，保密期限为三年。",
+      "乙方逾期交付的，每逾期一日按合同总金额的 0.5% 支付违约金。",
+    ],
+    new: [
+      "采购合同（合同编号 HT-2026-0311）",
+      "第一条 合同标的",
+      "甲方向乙方采购 301 项目运行环境配套设备，含应用服务器、数据库服务器各一批，并新增负载均衡设备 1 台。",
+      "第二条 合同金额与支付",
+      "合同总金额为人民币 128 万元（含税）。",
+      "付款方式：合同签订后支付 20%，验收合格后支付 70%，质保期满支付 10%。",
+      "第三条 交付与工期",
+      "乙方应于合同生效之日起 90 日内完成全部设备交付。",
+      "交付地点：北京市昌平区甲方指定机房。",
+      "因甲方原因造成的延期，交付工期相应顺延。",
+      "第四条 质量保证与验收",
+      "设备质保期为验收合格之日起 36 个月。",
+      "验收标准按附件一技术规格说明书执行，并要求通过第三方性能检测机构出具报告。",
+      "第五条 保密与违约",
+      "双方对合同内容及履约过程中知悉的商业秘密负有保密义务，保密期限为三年。",
+      "乙方逾期交付的，每逾期一日按合同总金额的 1% 支付违约金。",
+      "甲方逾期付款的，每逾期一日按未付款项的 0.05% 支付违约金。",
+    ],
+  },
+};
+
+/* ============================ 报告生成 ============================ */
+function esc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderCharDiff(oldText, newText) {
+  return charDiff(oldText, newText)
+    .map((op) => {
+      if (op.type === "equal") return esc(op.text);
+      if (op.type === "del") return `<del class="diff-del">${esc(op.text)}</del>`;
+      return `<ins class="diff-ins">${esc(op.text)}</ins>`;
+    })
+    .join("");
+}
+
+const STATUS_LABEL = { similar: "一致", modified: "修改", added: "新增", deleted: "删除" };
+
+function generateReport(result, names) {
+  const [oldName, newName] = names;
+  const s = result.stats;
+  const lines = [];
+  const html = [];
+
+  lines.push("# 版本差异对比报告", "", `（${oldName} vs ${newName}）`, "");
+
+  // 综合审核结论
+  const pass = result.comparable && result.riskLevel !== "高";
+  lines.push("## 综合审核结论", "",
+    `- 审核结果：${result.comparable ? (pass ? "通过" : "不通过") : "不通过"}`,
+    `- 总体风险等级：${result.riskLevel}`,
+    `- 结论：${result.summary}`, "");
+
+  // 规则统计
+  lines.push("## 规则统计", "",
+    `- 共比对：${s.total} 组`, `- 一致：${s.similar}`, `- 修改：${s.modified}`,
+    `- 新增：${s.added}`, `- 删除：${s.deleted}`, "");
+
+  // 规则引擎分析
+  const changeRate = s.total ? Math.round(((s.modified + s.added + s.deleted) / s.total) * 100) : 0;
+  const points = collectRiskPoints(result.items);
+  const avgScore = (() => {
+    const arr = result.items.filter((i) => i.status === "modified").map((i) => i.score);
+    return arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) : 0;
+  })();
+  lines.push("## 规则引擎分析", "",
+    `本次比对共覆盖 ${s.total} 组段落，其中一致 ${s.similar} 组，改动率约 ${changeRate}%` +
+    (avgScore ? `，修改段落平均相似度 ${avgScore}%` : "") + "。", "");
+  if (points.length) {
+    lines.push("需重点复核的风险点：", "");
+    points.forEach((p) => lines.push(`- [${p.seq}] ${p.rule}：${p.tip}`));
+    lines.push("");
+  } else {
+    lines.push("未命中风险关键词规则，改动以文本性调整为主。", "");
+  }
+
+  // 审阅意见（离线 Demo 由规则模板生成，正式版为本地大模型生成）
+  const mods = result.items.filter((i) => i.status === "modified");
+  const adds = result.items.filter((i) => i.status === "added");
+  const dels = result.items.filter((i) => i.status === "deleted");
+  lines.push("## 大模型审阅意见", "");
+  const opinionParts = [];
+  opinionParts.push(
+    `本次改动性质为${adds.length >= dels.length ? "增量扩张" : "条款收缩"}类变更，共 ${s.modified + s.added + s.deleted} 处变动。`
+  );
+  if (mods.length) {
+    opinionParts.push(
+      `修改集中在 ${[...new Set(points.map((p) => p.rule))].slice(0, 3).join("、") || "文本表述"} 等字段，` +
+      `建议逐项与业务方确认变更依据。`
+    );
+  }
+  if (dels.length) {
+    opinionParts.push(`其中 ${dels.length} 处为整段删除（见 [${dels.map((d) => d.seq).join("][")}]），建议确认是否为误删。`);
+  }
+  if (adds.length) {
+    opinionParts.push(`新增 ${adds.length} 处（见 [${adds.map((d) => d.seq).join("][")}]），需同步更新配套文档与验收口径。`);
+  }
+  opinionParts.push(`总体风险等级 ${result.riskLevel}，建议在定稿前完成上述风险点的复核留痕。`);
+  lines.push(opinionParts.join(""), "");
+
+  // 差异明细
+  lines.push("## 差异明细", "");
+  result.items.forEach((it) => {
+    if (it.status === "similar") {
+      lines.push(`### ${it.seq}. 一致 — 内容未变（相似度 ${Math.round(it.score * 100)}%）`, "");
+      lines.push(`- 内容：${it.oldText}`, "");
+    } else if (it.status === "modified") {
+      lines.push(`### ${it.seq}. 修改 — 内容有改动（相似度 ${Math.round(it.score * 100)}%）`, "");
+      lines.push(`- 旧版：${it.oldText}`, `- 新版：${it.newText}`, "");
+    } else if (it.status === "added") {
+      lines.push(`### ${it.seq}. 新增 — 新版新增段落`, "");
+      lines.push(`- 新版：${it.newText}`, "");
+    } else {
+      lines.push(`### ${it.seq}. 删除 — 旧版删除段落`, "");
+      lines.push(`- 旧版：${it.oldText}`, "");
+    }
+  });
+
+  // ---- HTML ----
+  html.push(`<h1>版本差异对比报告</h1>`);
+  html.push(`<p>（${esc(oldName)} vs ${esc(newName)}）</p>`);
+  html.push(`<h2>综合审核结论</h2><ul>`);
+  html.push(`<li>审核结果：${result.comparable ? (pass ? "通过" : "不通过") : "不通过"}</li>`);
+  html.push(`<li>总体风险等级：${esc(result.riskLevel)}</li>`);
+  html.push(`<li>结论：${esc(result.summary)}</li></ul>`);
+  html.push(`<h2>规则统计</h2><ul>`);
+  html.push(`<li>共比对：${s.total} 组</li><li>一致：${s.similar}</li><li>修改：${s.modified}</li>`);
+  html.push(`<li>新增：${s.added}</li><li>删除：${s.deleted}</li></ul>`);
+  html.push(`<h2>规则引擎分析</h2>`);
+  html.push(`<p>本次比对共覆盖 ${s.total} 组段落，其中一致 ${s.similar} 组，改动率约 ${changeRate}%` +
+    (avgScore ? `，修改段落平均相似度 ${avgScore}%` : "") + `。</p>`);
+  if (points.length) {
+    html.push(`<p>需重点复核的风险点：</p><ul>`);
+    points.forEach((p) => html.push(`<li>[${p.seq}] ${esc(p.rule)}：${esc(p.tip)}</li>`));
+    html.push(`</ul>`);
+  }
+  html.push(`<h2>大模型审阅意见</h2><p>${esc(opinionParts.join(""))}</p>`);
+  html.push(`<h2>差异明细</h2>`);
+  result.items.forEach((it) => {
+    if (it.status === "similar") {
+      html.push(`<h3>${it.seq}. 一致 — 内容未变（相似度 ${Math.round(it.score * 100)}%）</h3>`);
+      html.push(`<ul><li>内容：${esc(it.oldText)}</li></ul>`);
+    } else if (it.status === "modified") {
+      html.push(`<h3>${it.seq}. 修改 — 内容有改动（相似度 ${Math.round(it.score * 100)}%）</h3><ul>`);
+      html.push(`<li>旧版：${esc(it.oldText)}</li><li>新版：${esc(it.newText)}</li>`);
+      html.push(`<li>字符级对比：${renderCharDiff(it.oldText, it.newText)}</li></ul>`);
+    } else if (it.status === "added") {
+      html.push(`<h3>${it.seq}. 新增 — 新版新增段落</h3>`);
+      html.push(`<ul><li>新版：${esc(it.newText)}</li></ul>`);
+    } else {
+      html.push(`<h3>${it.seq}. 删除 — 旧版删除段落</h3>`);
+      html.push(`<ul><li>旧版：${esc(it.oldText)}</li></ul>`);
+    }
+  });
+
+  return { html: html.join("\n"), markdown: lines.join("\n") };
+}
+
+/* ============================ 差异问答（离线规则版） ============================ */
+/**
+ * 正式版这里会带上全部差异上下文请求本地大模型；
+ * Demo 用关键词路由 + 引用序号，保证离线也能演示「回答里带 [n] 溯源」这个亮点。
+ */
+function answerQuestion(question, result) {
+  const q = question || "";
+  const items = result.items;
+  const changed = items.filter((i) => i.status !== "similar");
+  const pick = (re) => changed.filter((i) => re.test((i.oldText || "") + (i.newText || "")));
+  const fmt = (list, limit = 6) => list.slice(0, limit)
+    .map((i) => `[${i.seq}] ${i.status === "added" ? "新增 " : i.status === "deleted" ? "删除 " : "修改 "}${i.newText || i.oldText}`)
+    .join("\n");
+
+  if (/金额|价格|费用|钱|付款|支付|预算/.test(q)) {
+    const list = pick(/金额|价款|价格|费用|元|支付/);
+    return list.length
+      ? `涉及金额字段的改动共 ${list.length} 处：\n${fmt(list)}\n建议核对是否与审批口径一致。`
+      : "本次比对未发现金额相关字段的改动。";
+  }
+  if (/工期|时间|日期|排期|进度|交付期/.test(q)) {
+    const list = pick(/工期|期限|交付|日期|月|起算/);
+    return list.length
+      ? `工期与时间相关改动共 ${list.length} 处：\n${fmt(list)}\n需评估是否影响里程碑承诺与排期。`
+      : "本次比对未发现工期或时间节点的改动。";
+  }
+  if (/性能|指标|QPS|并发|响应|配置|硬件|服务器/.test(q)) {
+    const list = pick(/QPS|毫秒|并发|性能|响应|核|内存|GB|服务器|配置/);
+    return list.length
+      ? `技术指标与配置相关改动共 ${list.length} 处：\n${fmt(list)}\n需确认现网架构能否达成，避免验收风险。`
+      : "本次比对未发现技术指标或硬件配置的改动。";
+  }
+  if (/删除|删掉|少了|缺/.test(q)) {
+    const list = changed.filter((i) => i.status === "deleted");
+    return list.length
+      ? `共有 ${list.length} 处整段删除：\n${fmt(list)}\n删除类改动风险最高，建议确认是否为误删。`
+      : "本次比对没有删除类改动。";
+  }
+  if (/新增|加了|多出/.test(q)) {
+    const list = changed.filter((i) => i.status === "added");
+    return list.length
+      ? `共有 ${list.length} 处新增：\n${fmt(list)}\n建议同步更新配套文档与验收口径。`
+      : "本次比对没有新增类改动。";
+  }
+  if (/风险|风险点|要注意|重点|复核/.test(q)) {
+    const points = collectRiskPoints(items);
+    if (!points.length) return "本次改动未命中风险关键词规则，总体风险较低。";
+    return `共命中 ${points.length} 个待复核风险点：\n` +
+      points.slice(0, 8).map((p) => `[${p.seq}] ${p.rule}：${p.tip}`).join("\n") +
+      `\n整体风险等级 ${result.riskLevel}。`;
+  }
+  if (/结论|总结|怎么样|总体|概况|通过/.test(q)) {
+    return `${result.summary}\n主要变动集中在：\n${fmt(changed, 8)}`;
+  }
+  if (!changed.length) return "两份文档内容完全一致，未发现差异。";
+
+  const head = changed.slice(0, 6).map((i) => `[${i.seq}] ${STATUS_LABEL[i.status]}：${i.newText || i.oldText}`);
+  return `共发现 ${changed.length} 处差异（相似 ${result.stats.similar} / 修改 ${result.stats.modified} / 新增 ${result.stats.added} / 删除 ${result.stats.deleted}）：\n` +
+    head.join("\n") + (changed.length > 6 ? `\n…… 其余 ${changed.length - 6} 处见详细报告。` : "");
+}
+
+/* ============================ 会话存储（本地持久化） ============================ */
+/**
+ * 设计上刻意对齐后端的 history_store：一个会话一条记录（对应后端一个 JSON 文件），
+ * 另有索引记录顺序。浏览器禁用本地存储时（部分浏览器在 file:// 下会限制）
+ * 自动退化为内存存储，只在本次会话有效，界面上会明确提示，不假装持久化成功。
+ */
+function createStore() {
+  const KEY_INDEX = "docdiff_demo_index_v1";
+  const KEY_PREFIX = "docdiff_demo_session_";
+  const LIMIT = 20;
+  const mem = {};
+  let available = true;
+  try {
+    localStorage.setItem("__docdiff_probe__", "1");
+    localStorage.removeItem("__docdiff_probe__");
+  } catch (e) {
+    available = false;
+  }
+  const read = (k) => {
+    if (available) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+  };
+  const write = (k, v) => {
+    if (available) { try { localStorage.setItem(k, v); return; } catch (e) { /* 配额满则忽略 */ } }
+    mem[k] = v;
+  };
+  const drop = (k) => {
+    if (available) { try { localStorage.removeItem(k); return; } catch (e) { /* ignore */ } }
+    delete mem[k];
+  };
+  return {
+    available,
+    ids() {
+      try {
+        const a = JSON.parse(read(KEY_INDEX) || "[]");
+        return Array.isArray(a) ? a : [];
+      } catch (e) { return []; }
+    },
+    get(id) {
+      const raw = read(KEY_PREFIX + id);
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch (e) { return null; }
+    },
+    save(session) {
+      write(KEY_PREFIX + session.session_id, JSON.stringify(session));
+      const ids = this.ids().filter((x) => x !== session.session_id);
+      ids.unshift(session.session_id);
+      // 超出上限的老会话直接丢弃，避免把本地存储撑爆
+      ids.slice(LIMIT).forEach((x) => drop(KEY_PREFIX + x));
+      write(KEY_INDEX, JSON.stringify(ids.slice(0, LIMIT)));
+      return session;
+    },
+    remove(id) {
+      drop(KEY_PREFIX + id);
+      write(KEY_INDEX, JSON.stringify(this.ids().filter((x) => x !== id)));
+    },
+    all() {
+      return this.ids().map((id) => this.get(id)).filter(Boolean)
+        .sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
+    },
+    search(q) {
+      const k = (q || "").trim().toLowerCase();
+      const all = this.all();
+      if (!k) return all;
+      return all.filter((s) =>
+        String(s.title || "").toLowerCase().includes(k) ||
+        String(s.summary || "").toLowerCase().includes(k) ||
+        (s.messages || []).some((m) => String(m.content || "").toLowerCase().includes(k))
+      );
+    },
+  };
+}
+
+/* ============================ 工具 ============================ */
+function pad2(n) { return String(n).padStart(2, "0"); }
+/** 本地时间戳，格式与后端保持一致：2026-09-23T11:20:33 */
+function nowLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T` +
+    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+function fmtTime(ts) { return String(ts || "").replace("T", " ").slice(0, 16); }
+function shortName(fn) { return String(fn || "").replace(/\.pdf$/i, ""); }
+
+/* ============================ UI 逻辑 ============================ */
+if (typeof document !== "undefined") {
+  const $ = (s) => document.querySelector(s);
+  const oldInput = $("#old-pdf"), newInput = $("#new-pdf");
+  const oldBox = $("#drop-old"), newBox = $("#drop-new");
+  const compareBtn = $("#compare-btn"), errorMsg = $("#error-msg"), loading = $("#loading");
+  const chatInput = $("#chat-input"), chatSend = $("#chat-send"), chatHistoryEl = $("#chat-history");
+  const historyListEl = $("#history-list"), historySearchEl = $("#history-search");
+  const store = createStore();
+
+  let currentResult = null, currentMarkdown = "", chatMessages = [], currentSessionId = null;
+  let scenarioKey = "spec";
+  let historySearchTimer = null;
+
+  // 本地存储不可用时明确告知，不假装持久化成功
+  if (!store.available) {
+    $("#store-tag").textContent = "离线 Demo · 本地存储受限";
+    $("#history-sub").textContent = "当前浏览器不允许本地存储，历史仅本次打开有效（正式版存在服务端 data/sessions/）";
+  }
+
+  function showView(name) {
+    ["upload-view", "result-view", "report-view", "history-view"].forEach((id) => {
+      $("#" + id).classList.toggle("hidden", id !== name + "-view");
+    });
+    $("#nav-expert").classList.toggle("active", name !== "history");
+    $("#nav-history").classList.toggle("active", name === "history");
+  }
+
+  function showFileName(box, nameEl, name) {
+    nameEl.textContent = name;
+    box.classList.add("has-file");
+  }
+
+  function bindBox(box, input, nameEl) {
+    box.addEventListener("click", () => input.click());
+    box.addEventListener("dragover", (e) => { e.preventDefault(); box.classList.add("dragover"); });
+    box.addEventListener("dragleave", () => box.classList.remove("dragover"));
+    box.addEventListener("drop", (e) => {
+      e.preventDefault(); box.classList.remove("dragover");
+      if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        showFileName(box, nameEl, e.dataTransfer.files[0].name);
+        $("#file-note").textContent = fileNote();
+      }
+    });
+    input.addEventListener("change", () => {
+      if (input.files[0]) {
+        showFileName(box, nameEl, input.files[0].name);
+        $("#file-note").textContent = fileNote();
+      }
+    });
+  }
+
+  /** 选了真实 PDF 就说清楚：Demo 不解析它，用的是内置示例文本 */
+  function fileNote() {
+    const a = $("#old-name").textContent.trim(), b = $("#new-name").textContent.trim();
+    if (!a && !b) return "";
+    return "离线 Demo 不解析真实 PDF，比对使用的是内置示例文档文本（正式版上传什么就解析什么）";
+  }
+
+  // 演示场景切换
+  document.querySelectorAll(".scenario-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      scenarioKey = btn.dataset.scenario;
+      document.querySelectorAll(".scenario-btn").forEach((b) => b.classList.toggle("on", b === btn));
+      loadScenario(scenarioKey);
+    });
+  });
+
+  function loadScenario(key) {
+    const sc = SCENARIOS[key];
+    oldInput.value = ""; newInput.value = "";
+    showFileName(oldBox, $("#old-name"), sc.fileA);
+    showFileName(newBox, $("#new-name"), sc.fileB);
+    $("#file-note").textContent = "";
+    errorMsg.textContent = "";
+  }
+
+  $("#demo-btn").addEventListener("click", () => { loadScenario(scenarioKey); errorMsg.textContent = ""; });
+
+  bindBox(oldBox, oldInput, $("#old-name"));
+  bindBox(newBox, newInput, $("#new-name"));
+
+  function trace(title, rows) {
+    const el = $("#trace");
+    el.style.display = "block";
+    el.innerHTML = `<div class="trace-title">${esc(title)}</div>` + rows.map((r) => `<div>${r}</div>`).join("");
+  }
+
+  compareBtn.addEventListener("click", () => {
+    errorMsg.textContent = "";
+    const a = $("#old-name").textContent.trim();
+    const b = $("#new-name").textContent.trim();
+    if (!a || !b) { errorMsg.textContent = "请先选择两份 PDF 文件，或点「一键载入示例文档」"; return; }
+    // 用户自己选的 PDF 走内置示例文本，文件名按用户选的记，避免看起来像真的解析了
+    const sc = SCENARIOS[scenarioKey];
+    const oldName = a, newName = b;
+
+    loading.classList.remove("hidden");
+    // setTimeout 让 loading 先渲染出来，模拟真实解析耗时
+    setTimeout(() => {
+      try {
+        const t0 = performance.now();
+        const result = computeDiff(sc.old, sc.new, { threshold: 0.6, window: 5 });
+        const ms = (performance.now() - t0).toFixed(1);
+        result.oldMeta = { filename: oldName, paragraphs: sc.old.length };
+        result.newMeta = { filename: newName, paragraphs: sc.new.length };
+        const report = generateReport(result, [oldName, newName]);
+
+        currentResult = result;
+        currentMarkdown = report.markdown;
+        chatMessages = [{
+          role: "assistant",
+          content: `已解析两份文档，共比对 ${result.stats.total} 组段落。可以直接问我具体差异，回答中的 [n] 对应报告里的差异序号。`,
+          ts: nowLocal(),
+        }];
+        currentSessionId = createSession(result, report, oldName, newName);
+
+        trace(`比对流水线执行记录　（${esc(sc.label)}）`, [
+          `<span class="dim">[1/4] 解析</span> <span class="ok">✓</span> ${esc(oldName)} → ${sc.old.length} 个段落`,
+          `<span class="dim">[2/4] 解析</span> <span class="ok">✓</span> ${esc(newName)} → ${sc.new.length} 个段落`,
+          `<span class="dim">[3/4] 配对</span> <span class="ok">✓</span> 滑动窗口 ±5，相似度阈值 0.6`,
+          `<span class="dim">[4/4] 比对</span> <span class="ok">✓</span> 段落 diff + 字符级 diff 完成，耗时 ${ms} ms`,
+          `<span class="dim">判定</span> 可比对=${result.comparable}　风险等级=${result.riskLevel}　命中风险点=${collectRiskPoints(result.items).length} 个`,
+          `<span class="dim">存档</span> <span class="ok">✓</span> 会话 ${String(currentSessionId).slice(0, 8)} 已写入本地存储（含比对结果、报告、对话）`,
+        ]);
+
+        renderResult(result, report.html);
+        showView("result");
+      } catch (err) {
+        errorMsg.textContent = "比对失败：" + err.message;
+      } finally {
+        loading.classList.add("hidden");
+      }
+    }, 420);
+  });
+
+  /** 建会话：对齐后端，一个会话存一份完整上下文 */
+  function createSession(result, report, oldName, newName) {
+    const ts = nowLocal();
+    const session = {
+      session_id: `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`,
+      title: `${shortName(oldName)} → ${shortName(newName)}`,
+      summary: result.summary,
+      risk_level: result.riskLevel,
+      comparable: result.comparable,
+      stats: result.stats,
+      items: result.items,
+      old_meta: result.oldMeta,
+      new_meta: result.newMeta,
+      report_html: report.html,
+      report_markdown: report.markdown,
+      messages: chatMessages.slice(),
+      created_at: ts,
+      updated_at: ts,
+    };
+    store.save(session);
+    return session.session_id;
+  }
+
+  function touchSession() {
+    if (!currentSessionId) return;
+    const s = store.get(currentSessionId);
+    if (!s) return;
+    s.messages = chatMessages.slice();
+    s.updated_at = nowLocal();
+    store.save(s);
+  }
+
+  function renderResult(result, reportHtml) {
+    const s = result.stats;
+    const meta = result.oldMeta && result.newMeta
+      ? `${result.oldMeta.filename} vs ${result.newMeta.filename} · ${result.comparable ? "可比对" : "不可比对"}` : "";
+    $("#status-badge").textContent = result.comparable ? "✓ 比对完成" : "✗ 不可比对";
+    $("#status-badge").className = "status-badge " + (result.comparable ? "success" : "error");
+    $("#compare-meta").textContent = meta;
+    $("#stats-badges").innerHTML =
+      `<span class="stat-badge similar">相似 ${s.similar}</span>` +
+      `<span class="stat-badge modified">修改 ${s.modified}</span>` +
+      `<span class="stat-badge added">新增 ${s.added}</span>` +
+      `<span class="stat-badge deleted">删除 ${s.deleted}</span>`;
+    $("#summary-box").innerHTML =
+      `<strong>综合结论</strong>：${esc(result.summary)}<br/><strong>风险等级</strong>：${esc(result.riskLevel)}`;
+    $("#report-body").innerHTML = reportHtml;
+    renderChat();
+  }
+
+  function addBubble(role, text, ts, pending) {
+    const div = document.createElement("div");
+    div.className = `chat-bubble ${role}` + (pending ? " pending" : "");
+    const body = document.createElement("span");
+    body.textContent = text;
+    div.appendChild(body);
+    if (ts) {
+      const t = document.createElement("span");
+      t.className = "bubble-ts";
+      t.textContent = fmtTime(ts);
+      div.appendChild(t);
+    }
+    chatHistoryEl.appendChild(div);
+    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+    return div;
+  }
+
+  const HINTS = ["这两份文档有什么差别？", "金额有什么变化？", "有哪些风险点？", "有没有被删掉的条款？"];
+
+  function renderChat() {
+    chatHistoryEl.innerHTML = "";
+    chatMessages.forEach((m) => addBubble(m.role, m.content, m.ts, false));
+    $("#chat-hints").innerHTML = HINTS.map((t) => `<span class="chat-hint">${t}</span>`).join("");
+    document.querySelectorAll(".chat-hint").forEach((el) => {
+      el.addEventListener("click", () => { chatInput.value = el.textContent; sendChat(); });
+    });
+  }
+
+  function sendChat() {
+    const q = chatInput.value.trim();
+    if (!q || !currentResult) return;
+    chatInput.value = "";
+    const userMsg = { role: "user", content: q, ts: nowLocal() };
+    chatMessages.push(userMsg);
+    addBubble("user", q, userMsg.ts, false);
+    chatSend.disabled = true;
+    const pendingEl = addBubble("assistant", "正在生成回答…", "", true);
+    setTimeout(() => {
+      const answer = answerQuestion(q, currentResult);
+      const botMsg = { role: "assistant", content: answer, ts: nowLocal() };
+      chatMessages.push(botMsg);
+      pendingEl.remove();
+      addBubble("assistant", answer, botMsg.ts, false);
+      chatSend.disabled = false;
+      touchSession();
+    }, 320);
+  }
+
+  chatSend.addEventListener("click", sendChat);
+  chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
+
+  // ---------- 视图切换与操作按钮 ----------
+  $("#nav-expert").addEventListener("click", (e) => { e.preventDefault(); showView(currentResult ? "result" : "upload"); });
+  $("#nav-history").addEventListener("click", (e) => { e.preventDefault(); showView("history"); renderHistory(""); });
+  $("#view-report-btn").addEventListener("click", () => showView("report"));
+  $("#back-btn").addEventListener("click", () => showView("result"));
+
+  $("#copy-btn").addEventListener("click", async () => {
+    if (!currentResult) return;
+    try { await navigator.clipboard.writeText(currentResult.summary); alert("结论已复制"); }
+    catch (e) { alert("复制失败，请手动选中文本"); }
+  });
+
+  $("#download-md-btn").addEventListener("click", () => {
+    const blob = new Blob([currentMarkdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "版本差异对比报告.md"; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  $("#restart-btn").addEventListener("click", () => {
+    oldInput.value = ""; newInput.value = "";
+    $("#old-name").textContent = ""; $("#new-name").textContent = "";
+    oldBox.classList.remove("has-file"); newBox.classList.remove("has-file");
+    currentResult = null; currentMarkdown = ""; chatMessages = []; currentSessionId = null;
+    $("#chat-history").innerHTML = "";
+    $("#file-note").textContent = "";
+    $("#trace").style.display = "none";
+    showView("upload");
+  });
+
+  // ---------- 审核历史 ----------
+  function renderHistory(q) {
+    const sessions = store.search(q);
+    if (!sessions.length) {
+      historyListEl.innerHTML = `<div class="history-empty">${
+        q ? "没有匹配的会话。" : "还没有记录。做一次比对后，会话会自动存到这里（含消息与时间戳）。"
+      }</div>`;
+      return;
+    }
+    historyListEl.innerHTML = "";
+    sessions.forEach((s) => {
+      const el = document.createElement("div");
+      el.className = "history-item";
+      el.innerHTML = `
+        <div class="history-item-top">
+          <div class="history-item-title">${esc(s.title)}</div>
+          <div class="history-item-time">${esc(fmtTime(s.updated_at))}</div>
+        </div>
+        <div class="history-item-summary">${esc(s.summary || "")}</div>
+        <div class="history-item-foot">
+          <div class="history-item-badges">
+            <span class="stat-badge similar">相似 ${s.stats.similar || 0}</span>
+            <span class="stat-badge modified">修改 ${s.stats.modified || 0}</span>
+            <span class="stat-badge added">新增 ${s.stats.added || 0}</span>
+            <span class="stat-badge deleted">删除 ${s.stats.deleted || 0}</span>
+            <span class="stat-badge" style="background:#f0f2f7;color:var(--text-secondary)">💬 ${(s.messages || []).length}</span>
+          </div>
+          <div class="history-item-actions">
+            <button class="secondary-btn restore-btn">恢复会话</button>
+            <button class="link-danger delete-btn">删除</button>
+          </div>
+        </div>`;
+      el.querySelector(".restore-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        restoreSession(s.session_id);
+      });
+      el.querySelector(".delete-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm(`确定删除会话「${s.title}」？删除后不可恢复。`)) return;
+        store.remove(s.session_id);
+        if (currentSessionId === s.session_id) currentSessionId = null;
+        renderHistory(historySearchEl.value);
+      });
+      el.addEventListener("click", () => restoreSession(s.session_id));
+      historyListEl.appendChild(el);
+    });
+  }
+
+  function restoreSession(sessionId) {
+    const s = store.get(sessionId);
+    if (!s) { alert("会话不存在或已删除"); return; }
+    loading.classList.remove("hidden");
+    setTimeout(() => {
+      currentResult = {
+        comparable: s.comparable,
+        riskLevel: s.risk_level,
+        summary: s.summary,
+        stats: s.stats,
+        items: s.items,
+        oldMeta: s.old_meta,
+        newMeta: s.new_meta,
+      };
+      currentMarkdown = s.report_markdown || "";
+      chatMessages = (s.messages || []).slice();
+      currentSessionId = s.session_id;
+      renderResult(currentResult, s.report_html || "");
+      showView("result");
+      loading.classList.add("hidden");
+    }, 260);
+  }
+
+  $("#history-refresh-btn").addEventListener("click", () => renderHistory(historySearchEl.value));
+  historySearchEl.addEventListener("input", () => {
+    clearTimeout(historySearchTimer);
+    historySearchTimer = setTimeout(() => renderHistory(historySearchEl.value), 300);
+  });
+
+  // 初始状态：不预选文件，点「一键载入示例文档」即可
+  compareBtn.disabled = false;
+}
+
+/* node 侧导出，便于离线跑校验脚本 */
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    normalizeText, similarity, charDiff, computeDiff, collectRiskPoints,
+    generateReport, answerQuestion, SCENARIOS,
+  };
+}
+</script>
+</body>
+</html>

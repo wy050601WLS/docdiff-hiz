@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文件比对专家 · DocDiff HIZ</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">文档比对平台</div>
+      <nav>
+        <a class="nav-item active" id="nav-expert" href="#">可用专家</a>
+        <a class="nav-item" href="#">核心专家库</a>
+        <a class="nav-item" href="#">专家管理</a>
+        <a class="nav-item" id="nav-history" href="#">审核历史</a>
+        <a class="nav-item" href="#">审核知识库</a>
+        <a class="nav-item" href="#">技能专家库</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="breadcrumb">
+          <span>对话</span>
+          <span>/</span>
+          <span>文件比对专家</span>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <!-- 上传区 -->
+        <div id="upload-view" class="card">
+          <h1 class="card-title">文件比对专家</h1>
+          <p class="card-desc">面向合同、规范、制度、技术文件、标书及各类版本化文档，自动完成两份文档的逐章节、逐段落、逐字段内容比对，识别新增、删除、修改等差异点，点击差异可定位到原文位置。</p>
+
+          <div class="upload-row">
+            <div class="upload-box" id="drop-old">
+              <input type="file" id="old-pdf" accept="application/pdf" hidden />
+              <div class="upload-icon">📄</div>
+              <div class="upload-title">上传文档 A（旧版）</div>
+              <div class="upload-hint">点击或拖拽 PDF 文件</div>
+              <div class="file-name" id="old-name"></div>
+            </div>
+            <div class="upload-vs">⇄</div>
+            <div class="upload-box" id="drop-new">
+              <input type="file" id="new-pdf" accept="application/pdf" hidden />
+              <div class="upload-icon">📗</div>
+              <div class="upload-title">上传文档 B（新版）</div>
+              <div class="upload-hint">点击或拖拽 PDF 文件</div>
+              <div class="file-name" id="new-name"></div>
+            </div>
+          </div>
+
+          <button id="compare-btn" class="primary-btn" disabled>
+            开始对比两个版本差异
+          </button>
+
+          <div id="error-msg" class="error-msg"></div>
+        </div>
+
+        <!-- 结果概览 -->
+        <div id="result-view" class="card hidden">
+          <div class="result-header">
+            <div>
+              <div class="status-badge success">✓ 比对完成</div>
+              <div class="meta" id="compare-meta"></div>
+            </div>
+            <div class="stats" id="stats-badges"></div>
+          </div>
+
+          <div class="action-bar">
+            <button id="view-report-btn" class="primary-btn">查看详细报告</button>
+            <button id="copy-btn" class="secondary-btn">复制结论</button>
+            <button id="download-md-btn" class="secondary-btn">下载报告</button>
+            <button id="restart-btn" class="secondary-btn">重新比对</button>
+          </div>
+
+          <div id="summary-box" class="summary-box"></div>
+
+          <!-- 对话区 -->
+          <div class="chat-section">
+            <div class="chat-title">💬 差异问答</div>
+            <div id="chat-history" class="chat-history"></div>
+            <div class="chat-input-row">
+              <input id="chat-input" type="text" placeholder="例如：这两份文档有什么差别？" />
+              <button id="chat-send" class="primary-btn">发送</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 报告详情 -->
+        <div id="report-view" class="card hidden">
+          <div class="report-toolbar">
+            <button id="back-btn" class="secondary-btn">← 返回</button>
+            <div class="report-title">版本差异对比报告</div>
+            <div></div>
+          </div>
+          <div id="report-body" class="report-body"></div>
+        </div>
+
+        <!-- 审核历史 -->
+        <div id="history-view" class="card hidden">
+          <div class="history-header">
+            <div>
+              <h2 class="history-title">审核历史</h2>
+              <div class="history-sub">所有比对会话与对话记录已持久化到服务端 data/sessions/，重启不丢</div>
+            </div>
+            <button id="history-refresh-btn" class="secondary-btn">刷新</button>
+          </div>
+          <input id="history-search" class="history-search" type="text" placeholder="搜索会话：标题、结论或对话内容…" />
+          <div id="history-list" class="history-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <div class="loading-text">正在解析与比对文档，请稍候…</div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

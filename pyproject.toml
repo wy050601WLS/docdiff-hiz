@@ -1,0 +1,37 @@
+[project]
+name = "docdiff-hiz"
+version = "1.0.0"
+description = "海致星图面试作业：PDF 文档差异比对系统"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "httpx>=0.27.0",
+    # 轻量 PDF 解析兜底，保证任何环境都能跑
+    "pypdf>=5.0.0",
+]
+
+[project.optional-dependencies]
+# 结构化 PDF 解析（重，会拉 torch）。装上自动启用，不装则降级到 pypdf。
+docling = [
+    "docling>=2.4.0",
+]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
