@@ -66,7 +66,7 @@ def main() -> int:
 
     # 简单断言：应当识别出修改/新增/删除
     ok = comparable and (stats["modified"] + stats["added"]) > 0
-    print("[结果] " + ("PASS ✅" if ok else "FAIL ❌"))
+    print("[结果] " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 2
 
 

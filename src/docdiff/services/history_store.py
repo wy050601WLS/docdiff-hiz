@@ -24,21 +24,15 @@ _DEFAULT_ROOT = Path("data") / "sessions"
 
 
 def _now() -> str:
-    """当前时间（带本地时区），微秒级精度。
+    """当前时间，带本地时区，微秒级。
 
-    为什么不用秒级：同一秒内「先建 A、再建 B、再更新 B」是常态，
-    秒级时间戳会让 A 和 B 的 updated_at 撞在一起，列表排序退化成随机，
-    出现「刚操作过的会话没排到最前」这种看起来像 bug 的行为。
+    不用秒级是因为同一秒内建多个会话很常见，时间戳撞车会让列表排序退化成随机。
     """
     return datetime.now().astimezone().isoformat(timespec="microseconds")
 
 
 class HistoryStore:
-    """会话历史的存取。
-
-    Args:
-        root: 会话文件目录，默认 `data/sessions/`
-    """
+    """会话历史的存取，root 默认是 data/sessions。"""
 
     def __init__(self, root: Optional[Path] = None) -> None:
         self.root = Path(root) if root else _DEFAULT_ROOT
