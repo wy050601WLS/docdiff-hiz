@@ -7,6 +7,7 @@
 - 双 PDF 上传，点击或拖拽都行
 - 段落级配对，滑动窗口加相似度匹配，输出一致、修改、新增、删除四类
 - 字符级 diff，修改段落逐字高亮，红删绿增。参考实现没有这一层
+- 原文对照与定位，每个差异项标出新旧版所在页码，双栏对回原文，问答里的 [序号] 点了直接跳到该条
 - 结构化报告，包含综合审核结论、规则统计、规则引擎分析、逐条差异明细
 - 大模型审阅意见，本地 Ollama 生成约 200 字，从改了什么上升到风险在哪
 - 差异问答，回答带 [序号] 引用，可以回溯到具体的差异项
@@ -26,7 +27,38 @@ PDF 解析优先用 Docling，它能输出结构化 Markdown、保留标题层�
 
 前端是原生 HTML/CSS/JS，零构建，打开即用。
 
-## 快速开始
+## Docker 部署
+
+一条命令起全套，应用加本地大模型一起编排，不用在本机装 Python 和 Ollama。
+
+```bash
+docker compose up -d --build
+docker compose exec ollama ollama pull qwen3.5:9b   # 首次拉模型，几分钟
+```
+
+打开 http://127.0.0.1:8000 。会话存档挂在 `session-data` 卷上，容器重建不丢。
+
+不想要大模型就只起应用（`--no-deps` 不拉 Ollama），并在 environment 里加 `LLM_ENABLED: "false"`，报告自动走规则引擎版本。
+
+```bash
+docker compose up -d --build --no-deps app
+```
+
+默认镜像只装轻量依赖（pypdf 解析）。要 Docling 结构化解析就带构建参数，镜像会大很多，因为要拉 torch。
+
+```bash
+docker compose build --build-arg WITH_DOCLING=true app
+```
+
+常用操作：
+
+```bash
+docker compose logs -f app       # 看日志
+docker compose exec app python -c "import httpx;print(httpx.get('http://127.0.0.1:8000/api/health').json())"
+docker compose down              # 停掉，卷保留
+```
+
+## 快速开始（本地）
 
 ### 创建环境并安装
 
@@ -136,6 +168,7 @@ docdiff-hiz/
 │   ├── 示例比对报告.md            # 后端真跑出来的报告样例
 │   └── ui-demo.html             # 可点击的离线前端 Demo，双击即用
 ├── pyproject.toml
+├── Dockerfile / docker-compose.yml / .dockerignore
 ├── Makefile / run.bat
 ├── .env.example
 ├── 交付说明.md                   # 交付说明与已知不足，对外

@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 # Docling 依赖较重（会拉 torch）。做成可选依赖：
 # 装在就用结构化解析，没装就退到 pypdf 纯文本解析，保证项目在任何环境都能跑起来。
@@ -25,13 +25,14 @@ except Exception:  # pragma: no cover
 class Paragraph:
     """段落对象。"""
 
-    def __init__(self, text: str, level: int = 0, label: str = "") -> None:
+    def __init__(self, text: str, level: int = 0, label: str = "", page: Optional[int] = None) -> None:
         self.text = text.strip()
         self.level = level  # 标题层级，0 表示正文
         self.label = label  # 解析器给出的标签
+        self.page = page  # 所在页码（1 起）；拿不到时为 None，前端就不显示定位
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"Paragraph(level={self.level}, text={self.text[:40]!r})"
+        return f"Paragraph(level={self.level}, page={self.page}, text={self.text[:40]!r})"
 
 
 def _is_meaningful(text: str, min_len: int = 6) -> bool:
@@ -75,16 +76,8 @@ def _split_paragraphs(text: str) -> List[str]:
     return paragraphs
 
 
-def _parse_with_docling(path: Path) -> Tuple[List[Paragraph], dict]:
-    """Docling 结构化解析。"""
-    converter = DocumentConverter()
-    result = converter.convert(str(path))
-    if result.status == ConversionStatus.FAILURE:
-        raise ValueError(f"Docling 解析失败: {path}")
-
-    doc = result.document
-    md = doc.export_to_markdown()
-
+def _paragraphs_from_markdown(md: str) -> List[Paragraph]:
+    """Markdown 导出件里还原段落（拿不到页码，page 为 None）。"""
     paragraphs: List[Paragraph] = []
     for line in md.splitlines():
         line = line.strip()
@@ -95,6 +88,37 @@ def _parse_with_docling(path: Path) -> Tuple[List[Paragraph], dict]:
             level = len(line) - len(line.lstrip("#"))
             line = line.lstrip("#").strip()
         paragraphs.append(Paragraph(text=line, level=level, label="heading" if level else "text"))
+    return paragraphs
+
+
+def _parse_with_docling(path: Path) -> Tuple[List[Paragraph], dict]:
+    """Docling 结构化解析。
+
+    优先用 iterate_items 逐块取文本，这样能带出页码（原文定位要用）；
+    接口对不上就退回 Markdown 导出件，功能不受影响，只是没有页码。
+    """
+    converter = DocumentConverter()
+    result = converter.convert(str(path))
+    if result.status == ConversionStatus.FAILURE:
+        raise ValueError(f"Docling 解析失败: {path}")
+
+    doc = result.document
+    paragraphs: List[Paragraph] = []
+    try:
+        for item, _level in doc.iterate_items():
+            text = getattr(item, "text", None)
+            if not text or not _is_meaningful(text):
+                continue
+            prov = getattr(item, "prov", None) or []
+            page = getattr(prov[0], "page_no", None) if prov else None
+            label = str(getattr(item, "label", "text") or "text").lower()
+            level = 1 if ("heading" in label or "title" in label) else 0
+            paragraphs.append(Paragraph(text=str(text), level=level, label=label, page=page))
+    except Exception:  # pragma: no cover - 取决于 docling 版本
+        paragraphs = []
+
+    if not paragraphs:
+        paragraphs = _paragraphs_from_markdown(doc.export_to_markdown())
 
     metadata = {
         "filename": path.name,
@@ -111,19 +135,22 @@ def _parse_with_pypdf(path: Path) -> Tuple[List[Paragraph], dict]:
         raise ValueError("Docling 与 pypdf 均不可用，无法解析 PDF")
 
     reader = PdfReader(str(path))
-    texts: List[str] = []
-    for page in reader.pages:
-        texts.append(page.extract_text() or "")
 
     paragraphs: List[Paragraph] = []
-    for page_text in texts:
-        for para in _split_paragraphs(page_text):
+    # 逐页解析，页码记到段落上，差异项才能回指到原文位置
+    for page_no, page in enumerate(reader.pages, start=1):
+        for para in _split_paragraphs(page.extract_text() or ""):
             # 纯文本解析拿不到标题层级，用「短句 + 以数字/第X章开头」粗略识别
             is_heading = len(para) < 40 and bool(
                 re.match(r"^(第[一二三四五六七八九十百]+[章节条]|[0-9]+(\.[0-9]+)*[、.\s])", para)
             )
             paragraphs.append(
-                Paragraph(text=para, level=1 if is_heading else 0, label="heading" if is_heading else "text")
+                Paragraph(
+                    text=para,
+                    level=1 if is_heading else 0,
+                    label="heading" if is_heading else "text",
+                    page=page_no,
+                )
             )
 
     metadata = {

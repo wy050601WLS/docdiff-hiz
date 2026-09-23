@@ -210,7 +210,13 @@ def _assemble_markdown(result: CompareResult, rule_text: str, llm_text: str) -> 
         if d.status == DiffStatus.SIMILAR:
             continue
         label = STATUS_LABEL.get(d.status, d.status)
-        lines.append(f"### {d.index}. {label} — {d.reason}")
+        loc = []
+        if d.old_page:
+            loc.append(f"旧版 P{d.old_page}")
+        if d.new_page:
+            loc.append(f"新版 P{d.new_page}")
+        loc_text = f"（{' / '.join(loc)}）" if loc else ""
+        lines.append(f"### {d.index}. {label} — {d.reason}{loc_text}")
         if d.old_text:
             lines.append(f"- 旧版：{d.old_text[:400]}")
         if d.new_text:

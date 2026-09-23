@@ -27,6 +27,8 @@ class ParagraphDiff(BaseModel):
     new_text: Optional[str] = Field(None, description="新版段落原文")
     reason: str = Field("", description="差异原因简述")
     char_diff_html: Optional[str] = Field(None, description="字符级 diff HTML")
+    old_page: Optional[int] = Field(None, description="旧版所在页码（1 起，拿不到时为空）")
+    new_page: Optional[int] = Field(None, description="新版所在页码（1 起，拿不到时为空）")
 
 
 class CompareResult(BaseModel):

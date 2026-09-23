@@ -25,6 +25,15 @@ dev = [
     "ruff>=0.6.0",
 ]
 
+# 前端三件套要跟着包一起装，否则 pip install . 之后静态目录不在 site-packages 里，
+# 容器里起服会报 Directory '.../static' does not exist。可编辑安装时看不出这个问题。
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["docdiff", "docdiff.api", "docdiff.models", "docdiff.services"]
+
+[tool.setuptools.package-data]
+docdiff = ["static/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

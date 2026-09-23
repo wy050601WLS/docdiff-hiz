@@ -1,0 +1,54 @@
+services:
+  # 比对服务。默认只装轻量依赖（pypdf 兜底解析），够跑通全链路。
+  app:
+    build:
+      context: .
+      args:
+        WITH_DOCLING: "false"
+    image: docdiff-hiz:1.0.0
+    container_name: docdiff-app
+    ports:
+      - "8000:8000"
+    environment:
+      # 容器内通过服务名访问 Ollama；走 OpenAI 兼容协议，换供应商只改这三行
+      LLM_BASE_URL: http://ollama:11434/v1
+      LLM_API_KEY: ollama
+      LLM_MODEL: qwen3.5:9b
+      LLM_ENABLED: "true"
+      PARSE_PREFER: pypdf
+    volumes:
+      - session-data:/app/data
+      - upload-tmp:/app/uploads
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx,sys; sys.exit(0 if httpx.get('http://127.0.0.1:8000/api/health', timeout=5).status_code == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # 本地大模型。首次要拉模型：docker compose exec ollama ollama pull qwen3.5:9b
+  # 有 NVIDIA 显卡就把下面 deploy 段的注释打开。
+  ollama:
+    image: ollama/ollama:latest
+    container_name: docdiff-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  session-data:
+  ollama-models:
+  upload-tmp:

@@ -136,8 +136,129 @@ function showResult(result, reportHtml) {
   `;
 
   $("#report-body").innerHTML = reportHtml;
+  renderLocatePanel(result);
   chatHistory = [];
   $("#chat-history").innerHTML = "";
+}
+
+// ---------- 原文对照与定位 ----------
+
+const STATUS_LABEL = {
+  similar: "相似",
+  modified: "修改",
+  added: "新增",
+  deleted: "删除",
+  uncomparable: "不可比对",
+};
+
+// 把后端生成的字符级 diff HTML 拆成旧版、新版两栏：
+// del 只留左边，ins 只留右边，相同部分两边都有
+function splitDiffHtml(html) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = html || "";
+  const oldEl = document.createElement("div");
+  const newEl = document.createElement("div");
+  Array.from(wrap.childNodes).forEach((node) => {
+    const tag = node.nodeType === 1 ? node.tagName : null;
+    if (tag === "DEL") {
+      oldEl.appendChild(node.cloneNode(true));
+    } else if (tag === "INS") {
+      newEl.appendChild(node.cloneNode(true));
+    } else {
+      oldEl.appendChild(node.cloneNode(true));
+      newEl.appendChild(node.cloneNode(true));
+    }
+  });
+  return { oldEl, newEl };
+}
+
+function locateTextNode(d, side) {
+  const box = document.createElement("div");
+  box.className = "locate-text";
+  const raw = side === "old" ? d.old_text : d.new_text;
+  if (!raw) {
+    box.classList.add("empty");
+    box.textContent = "（无）";
+    return box;
+  }
+  if (d.char_diff_html && d.status === "modified") {
+    const parts = splitDiffHtml(d.char_diff_html);
+    box.appendChild(side === "old" ? parts.oldEl : parts.newEl);
+    return box;
+  }
+  const span = document.createElement("span");
+  if (side === "new" && d.status === "added") span.className = "diff-ins";
+  if (side === "old" && d.status === "deleted") span.className = "diff-del";
+  span.textContent = raw;
+  box.appendChild(span);
+  return box;
+}
+
+function pageBadge(label, page) {
+  const el = document.createElement("span");
+  el.className = "page-badge";
+  el.textContent = page ? `${label} P${page}` : `${label} 页码未知`;
+  if (!page) el.classList.add("unknown");
+  return el;
+}
+
+function renderLocatePanel(result) {
+  const panel = $("#locate-panel");
+  const list = $("#locate-list");
+  const items = (result.diffs || []).filter((d) => d.status !== "similar");
+  list.innerHTML = "";
+  if (!items.length) {
+    panel.classList.add("hidden");
+    return;
+  }
+  panel.classList.remove("hidden");
+
+  items.forEach((d) => {
+    const card = document.createElement("div");
+    card.className = `locate-card ${d.status}`;
+    card.id = `diff-${d.index}`;
+
+    const head = document.createElement("div");
+    head.className = "locate-card-head";
+    head.innerHTML =
+      `<span class="locate-idx">#${d.index}</span>` +
+      `<span class="locate-status s-${d.status}">${STATUS_LABEL[d.status] || d.status}</span>`;
+    head.appendChild(pageBadge("旧版", d.old_page));
+    head.appendChild(pageBadge("新版", d.new_page));
+
+    const reason = document.createElement("div");
+    reason.className = "locate-reason";
+    reason.textContent = d.reason || "";
+
+    const cols = document.createElement("div");
+    cols.className = "locate-cols";
+    ["old", "new"].forEach((side) => {
+      const col = document.createElement("div");
+      col.className = "locate-col";
+      const title = document.createElement("div");
+      title.className = "locate-col-title";
+      title.textContent = side === "old" ? "旧版原文" : "新版原文";
+      col.appendChild(title);
+      col.appendChild(locateTextNode(d, side));
+      cols.appendChild(col);
+    });
+
+    card.appendChild(head);
+    card.appendChild(reason);
+    card.appendChild(cols);
+    list.appendChild(card);
+  });
+}
+
+// 问答里的 [n] 做成可点链接，点了跳到对应差异项
+function focusDiff(index) {
+  if (!currentResult) return;
+  showView("report");
+  const el = document.getElementById(`diff-${index}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1600);
 }
 
 $("#view-report-btn").addEventListener("click", () => showView("report"));
@@ -228,10 +349,36 @@ function formatTs(iso) {
   }
 }
 
+// 回答里的 [序号] 渲染成可点链接
+function renderWithRefs(div, text) {
+  const re = /\[(\d+)\]/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) div.appendChild(document.createTextNode(text.slice(last, m.index)));
+    const idx = Number(m[1]);
+    const a = document.createElement("a");
+    a.className = "ref-link";
+    a.href = "javascript:void(0)";
+    a.textContent = `[${idx}]`;
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      focusDiff(idx);
+    });
+    div.appendChild(a);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) div.appendChild(document.createTextNode(text.slice(last)));
+}
+
 function addBubble(role, text, pending = false, ts = "") {
   const div = document.createElement("div");
   div.className = `chat-bubble ${role}` + (pending ? " pending" : "");
-  div.textContent = text;
+  if (role === "assistant" && !pending) {
+    renderWithRefs(div, text || "");
+  } else {
+    div.textContent = text;
+  }
   if (ts) {
     const t = document.createElement("span");
     t.className = "bubble-ts";

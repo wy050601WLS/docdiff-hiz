@@ -83,6 +83,31 @@ nav{margin-top:12px}
 .report-body ul{padding-left:20px}
 .report-body .diff-del{background:#ffe6e6;text-decoration:line-through}
 .report-body .diff-ins{background:#e6ffe6;text-decoration:underline}
+.locate-panel{border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:24px;background:#fcfdff}
+.locate-head{margin-bottom:14px}
+.locate-title{font-size:16px;font-weight:600}
+.locate-hint{font-size:13px;color:var(--text-secondary);margin-top:4px}
+.locate-list{display:flex;flex-direction:column;gap:12px}
+.locate-card{border:1px solid var(--border);border-radius:8px;background:#fff;padding:12px 14px}
+.locate-card.flash{animation:locate-flash 1.6s ease;border-color:var(--primary)}
+@keyframes locate-flash{0%,100%{box-shadow:none}20%,60%{box-shadow:0 0 0 3px rgba(43,106,255,.18)}}
+.locate-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.locate-idx{font-weight:600;font-size:14px}
+.locate-status{font-size:12px;padding:2px 8px;border-radius:10px;background:#f0f2f7;color:var(--text-secondary)}
+.locate-status.s-modified{background:rgba(250,173,20,.14);color:#b07800}
+.locate-status.s-added{background:rgba(0,181,120,.14);color:#00875a}
+.locate-status.s-deleted{background:rgba(255,77,79,.12);color:var(--danger)}
+.page-badge{font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);color:var(--text-secondary)}
+.locate-reason{font-size:13px;color:var(--text-secondary);margin:8px 0 10px}
+.locate-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:720px){.locate-cols{grid-template-columns:1fr}}
+.locate-col-title{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+.locate-text{font-size:13px;line-height:1.8;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#fafbfc;word-break:break-word;max-height:200px;overflow:auto}
+.locate-text.empty{color:var(--text-secondary)}
+.locate-text .diff-del{background:#ffe6e6;text-decoration:line-through}
+.locate-text .diff-ins{background:#e6ffe6;text-decoration:underline}
+.ref-link{color:var(--primary);text-decoration:none;font-weight:600}
+.ref-link:hover{text-decoration:underline}
 .history-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
 .history-title{font-size:20px;margin:0 0 6px}
 .history-sub{color:var(--text-secondary);font-size:13px}
@@ -215,6 +240,13 @@ nav{margin-top:12px}
           <button id="back-btn" class="secondary-btn">← 返回</button>
           <div class="report-title">版本差异对比报告</div>
           <div></div>
+        </div>
+        <div id="locate-panel" class="locate-panel hidden">
+          <div class="locate-head">
+            <div class="locate-title">原文对照与定位</div>
+            <div class="locate-hint">红删绿增，逐条对回原文位置；问答里的 [序号] 可直接点进来（演示文档是内置的，用段落序号定位，正式版显示 PDF 页码）</div>
+          </div>
+          <div id="locate-list" class="locate-list"></div>
         </div>
         <div id="report-body" class="report-body"></div>
       </div>
@@ -968,14 +1000,130 @@ if (typeof document !== "undefined") {
     $("#summary-box").innerHTML =
       `<strong>综合结论</strong>：${esc(result.summary)}<br/><strong>风险等级</strong>：${esc(result.riskLevel)}`;
     $("#report-body").innerHTML = reportHtml;
+    renderLocatePanel(result);
     renderChat();
+  }
+
+  // ---------- 原文对照与定位 ----------
+  // charDiff 生成的 HTML 拆成两栏：删除只留左栏，新增只留右栏，相同部分两边都有
+  function splitDiffHtml(html) {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = html || "";
+    const oldEl = document.createElement("div");
+    const newEl = document.createElement("div");
+    Array.from(wrap.childNodes).forEach((node) => {
+      const tag = node.nodeType === 1 ? node.tagName : null;
+      if (tag === "DEL") oldEl.appendChild(node.cloneNode(true));
+      else if (tag === "INS") newEl.appendChild(node.cloneNode(true));
+      else { oldEl.appendChild(node.cloneNode(true)); newEl.appendChild(node.cloneNode(true)); }
+    });
+    return { oldEl: oldEl, newEl: newEl };
+  }
+
+  function locateTextNode(it, side) {
+    const box = document.createElement("div");
+    box.className = "locate-text";
+    const raw = side === "old" ? it.oldText : it.newText;
+    if (!raw) { box.classList.add("empty"); box.textContent = "（无）"; return box; }
+    if (it.status === "modified") {
+      const parts = splitDiffHtml(renderCharDiff(it.oldText, it.newText));
+      box.appendChild(side === "old" ? parts.oldEl : parts.newEl);
+      return box;
+    }
+    const span = document.createElement("span");
+    if (side === "new" && it.status === "added") span.className = "diff-ins";
+    if (side === "old" && it.status === "deleted") span.className = "diff-del";
+    span.textContent = raw;
+    box.appendChild(span);
+    return box;
+  }
+
+  function posBadge(label, idx) {
+    const el = document.createElement("span");
+    el.className = "page-badge";
+    el.textContent = idx === null || idx === undefined ? label + " 无" : label + " 第 " + (idx + 1) + " 段";
+    return el;
+  }
+
+  function renderLocatePanel(result) {
+    const panel = $("#locate-panel");
+    const list = $("#locate-list");
+    const items = (result.items || []).filter((it) => it.status !== "similar");
+    list.innerHTML = "";
+    if (!items.length) { panel.classList.add("hidden"); return; }
+    panel.classList.remove("hidden");
+    items.forEach((it) => {
+      const card = document.createElement("div");
+      card.className = "locate-card " + it.status;
+      card.id = "diff-" + it.seq;
+
+      const head = document.createElement("div");
+      head.className = "locate-card-head";
+      head.innerHTML =
+        '<span class="locate-idx">#' + it.seq + "</span>" +
+        '<span class="locate-status s-' + it.status + '">' + (STATUS_LABEL[it.status] || it.status) + "</span>";
+      head.appendChild(posBadge("旧版", it.oldIdx));
+      head.appendChild(posBadge("新版", it.newIdx));
+
+      const reason = document.createElement("div");
+      reason.className = "locate-reason";
+      reason.textContent = it.status === "modified" ? "相似度 " + Math.round(it.score * 100) + "%" : STATUS_LABEL[it.status];
+
+      const cols = document.createElement("div");
+      cols.className = "locate-cols";
+      ["old", "new"].forEach((side) => {
+        const col = document.createElement("div");
+        col.className = "locate-col";
+        const title = document.createElement("div");
+        title.className = "locate-col-title";
+        title.textContent = side === "old" ? "旧版原文" : "新版原文";
+        col.appendChild(title);
+        col.appendChild(locateTextNode(it, side));
+        cols.appendChild(col);
+      });
+
+      card.appendChild(head);
+      card.appendChild(reason);
+      card.appendChild(cols);
+      list.appendChild(card);
+    });
+  }
+
+  function focusDiff(seq) {
+    if (!currentResult) return;
+    showView("report");
+    const el = document.getElementById("diff-" + seq);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1600);
+  }
+
+  // 回答里的 [序号] 做成可点链接，点了跳到对应差异项
+  function renderWithRefs(box, text) {
+    const re = /\[(\d+)\]/g;
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) box.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const seq = Number(m[1]);
+      const a = document.createElement("a");
+      a.className = "ref-link";
+      a.href = "javascript:void(0)";
+      a.textContent = "[" + seq + "]";
+      a.addEventListener("click", (e) => { e.preventDefault(); focusDiff(seq); });
+      box.appendChild(a);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) box.appendChild(document.createTextNode(text.slice(last)));
   }
 
   function addBubble(role, text, ts, pending) {
     const div = document.createElement("div");
     div.className = `chat-bubble ${role}` + (pending ? " pending" : "");
     const body = document.createElement("span");
-    body.textContent = text;
+    if (role === "assistant" && !pending) renderWithRefs(body, text || "");
+    else body.textContent = text;
     div.appendChild(body);
     if (ts) {
       const t = document.createElement("span");

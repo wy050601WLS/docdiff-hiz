@@ -374,6 +374,76 @@ nav {
 .report-body .diff-del { background: #ffe6e6; text-decoration: line-through; }
 .report-body .diff-ins { background: #e6ffe6; text-decoration: underline; }
 
+/* 原文对照与定位 */
+.locate-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 24px;
+  background: #fcfdff;
+}
+.locate-head { margin-bottom: 14px; }
+.locate-title { font-size: 16px; font-weight: 600; }
+.locate-hint { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.locate-list { display: flex; flex-direction: column; gap: 12px; }
+.locate-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px 14px;
+}
+.locate-card.flash {
+  animation: locate-flash 1.6s ease;
+  border-color: var(--primary);
+}
+@keyframes locate-flash {
+  0%, 100% { box-shadow: none; }
+  20%, 60% { box-shadow: 0 0 0 3px rgba(0, 82, 217, 0.15); }
+}
+.locate-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.locate-idx { font-weight: 600; font-size: 14px; }
+.locate-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f0f2f7;
+  color: var(--text-secondary);
+}
+.locate-status.s-modified { background: rgba(250, 173, 20, 0.14); color: #b07800; }
+.locate-status.s-added { background: rgba(0, 181, 120, 0.14); color: #00875a; }
+.locate-status.s-deleted { background: rgba(255, 77, 79, 0.12); color: var(--danger); }
+.page-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.page-badge.unknown { opacity: 0.6; }
+.locate-reason { font-size: 13px; color: var(--text-secondary); margin: 8px 0 10px; }
+.locate-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) {
+  .locate-cols { grid-template-columns: 1fr; }
+}
+.locate-col { min-width: 0; }
+.locate-col-title { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.locate-text {
+  font-size: 13px;
+  line-height: 1.8;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fafbfc;
+  word-break: break-word;
+  max-height: 200px;
+  overflow: auto;
+}
+.locate-text.empty { color: var(--text-secondary); }
+.locate-text .diff-del { background: #ffe6e6; text-decoration: line-through; }
+.locate-text .diff-ins { background: #e6ffe6; text-decoration: underline; }
+.ref-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+.ref-link:hover { text-decoration: underline; }
+
 .loading {
   position: fixed;
   inset: 0;

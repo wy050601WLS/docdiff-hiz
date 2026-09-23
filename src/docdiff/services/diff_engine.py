@@ -130,6 +130,8 @@ def compute_diff(
                 new_text=new.text if new else None,
                 reason=reason,
                 char_diff_html=diff_html,
+                old_page=old.page if old else None,
+                new_page=new.page if new else None,
             )
         )
         idx += 1
