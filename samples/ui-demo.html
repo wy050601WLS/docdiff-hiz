@@ -304,8 +304,8 @@ function charDiff(a, b) {
 
 /**
  * 段落配对：滑动窗口 + 相似度阈值。
- * 用窗口而非全局最优是为了抗「大段插入/删除」——一旦新文档中间插了一大段，
- * 全局匹配会把后半段全部错位配成「修改」，窗口法能把错位限制在局部。
+ * 用窗口而不是全局最优，是为了抗大段插入和删除。新文档中间插进一大段之后，
+ * 全局匹配会把后半段全部错位配成修改，窗口法能把错位限制在局部。
  */
 function pairParagraphs(oldP, newP, threshold, window) {
   const matchedOld = new Set(), matchedNew = new Set(), pairs = [];
@@ -348,7 +348,7 @@ function computeDiff(oldParas, newParas, opts) {
     if (!matchedNew.has(j)) items.push({ status: "added", oldIdx: null, newIdx: j, score: 0, oldText: null, newText: t });
   });
 
-  // 按原文位置排序，再统一编号——保证报告里的 [n] 与阅读顺序一致
+  // 按原文位置排序，再统一编号，保证报告里的 [n] 与阅读顺序一致
   items.sort((x, y) => {
     const kx = x.oldIdx === null ? x.newIdx : x.oldIdx;
     const ky = y.oldIdx === null ? y.newIdx : y.oldIdx;
